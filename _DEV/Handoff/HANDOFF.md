@@ -9,6 +9,7 @@
 | 3     | 완료 | 프론트엔드 플레이어 | [HANDOFF-phase3.md](HANDOFF-phase3.md) |
 | 4     | 완료 | 썸네일 + 메타데이터 | [HANDOFF-phase4.md](HANDOFF-phase4.md) |
 | 5     | 완료 | 운영 안정화 | [HANDOFF-phase5.md](HANDOFF-phase5.md) |
+| 6     | 완료 | 배포 (맥미니 + VPS + Tailscale) | [HANDOFF-phase6.md](HANDOFF-phase6.md) |
 
 ## 프로젝트 구조 (최종)
 
@@ -66,12 +67,19 @@ pm2 save
 pm2 startup    # 재부팅 자동 시작 등록 (최초 1회)
 
 # 초기 데이터 세팅 (서버 실행 후)
-curl -X POST http://localhost:3000/api/transcode    # HLS 변환
-curl -X POST http://localhost:3000/api/thumbnail    # 썸네일 생성
+curl -X POST http://localhost:8080/api/transcode    # HLS 변환
+curl -X POST http://localhost:8080/api/thumbnail    # 썸네일 생성
 ```
 
 ## 환경
 
+### 개발 (로컬)
 - Node.js v25.2.1 / FFmpeg 8.1 / PM2
 - MEDIA_ROOT=/Volumes/NINE_DEV/portfolio
 - PORT=3000
+
+### 프로덕션 (맥미니) — Phase 6 참조
+- PORT=8080
+- MEDIA_ROOT=/Volumes/NINE_MEDIA/WORX
+- 외부 접속: `http://158.247.221.122:8080` (VPS + Tailscale 경유)
+- GitHub: `reverve9/framenine` (private)
