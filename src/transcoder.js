@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import ffmpeg from 'fluent-ffmpeg';
 import { VARIANTS, SEGMENT_DURATION } from './config.js';
@@ -37,6 +37,7 @@ export function filterVariants(sourceWidth, sourceHeight) {
 export function transcodeVariant(inputPath, outputDir, variant, onProgress) {
   return new Promise(async (resolve, reject) => {
     const variantDir = join(outputDir, variant.label);
+    await rm(variantDir, { recursive: true, force: true });
     await mkdir(variantDir, { recursive: true });
 
     const segmentPattern = join(variantDir, 'segment%03d.ts');

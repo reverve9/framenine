@@ -225,6 +225,66 @@ video {
 .placeholder .icon { font-size: 48px; margin-bottom: 16px; }
 .placeholder .text { font-size: 14px; }
 
+/* --- Admin Panel --- */
+.admin-panel {
+  border-bottom: 1px solid #222;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-btn {
+  padding: 5px 12px;
+  font-size: 12px;
+  background: #1e1e1e;
+  color: #aaa;
+  border: 1px solid #333;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+
+.admin-btn:hover:not(:disabled) { background: #2a2a2a; color: #eee; }
+.admin-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.admin-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-text {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.progress-bar {
+  height: 2px;
+  background: #222;
+  border-radius: 2px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #4ade80;
+  border-radius: 2px;
+  transition: width 0.4s;
+  width: 0%;
+}
+
+.progress-fill.error { background: #f87171; }
+
 /* --- Responsive --- */
 @media (max-width: 768px) {
   .main { flex-direction: column; }
@@ -247,6 +307,22 @@ video {
 
 <div class="main">
   <aside class="sidebar">
+    <div class="admin-panel">
+      <div class="admin-row">
+        <button class="admin-btn" id="transcodeBtn">HLS 변환</button>
+        <div class="admin-info">
+          <div class="admin-text" id="transcodeText">대기 중</div>
+          <div class="progress-bar"><div class="progress-fill" id="transcodeProg"></div></div>
+        </div>
+      </div>
+      <div class="admin-row">
+        <button class="admin-btn" id="thumbBtn">썸네일 생성</button>
+        <div class="admin-info">
+          <div class="admin-text" id="thumbText">대기 중</div>
+          <div class="progress-bar"><div class="progress-fill" id="thumbProg"></div></div>
+        </div>
+      </div>
+    </div>
     <div class="tabs" id="tabs"></div>
     <div class="year-filter" id="yearFilter"></div>
     <div class="video-list" id="videoList"></div>
@@ -501,8 +577,141 @@ video {
     }
   });
 
+  // --- Admin Panel ---
+  const $transcodeBtn = document.getElementById('transcodeBtn');
+  const $thumbBtn     = document.getElementById('thumbBtn');
+  const $transcodeText = document.getElementById('transcodeText');
+  const $thumbText    = document.getElementById('thumbText');
+  const $transcodeProg = document.getElementById('transcodeProg');
+  const $thumbProg    = document.getElementById('thumbProg');
+
+  let transcodePoller = null;
+  let thumbPoller     = null;
+
+  function updateTranscodeUI(d) {
+    const done = (d.completed || 0) + (d.failed || 0) + (d.skipped || 0);
+    const pct  = d.total > 0 ? Math.round(done / d.total * 100) : 0;
+    $transcodeProg.style.width = pct + '%';
+    $transcodeProg.classList.toggle('error', d.failed > 0 && !d.running);
+
+    if (d.running) {
+      const active = (d.jobs || []).find(j => j.status === 'transcoding');
+      const variant  = active?.currentVariant || '';
+      const percent  = active?.progress?.percent ?? '';
+      $transcodeText.textContent = variant
+        ? `변환 중… ${variant} ${percent !== '' ? percent + '%' : ''}`
+        : '변환 중…';
+      $transcodeBtn.disabled = true;
+    } else {
+      if (d.total > 0) {
+        const parts = [];
+        if (d.completed) parts.push(`완료 ${d.completed}`);
+        if (d.skipped)   parts.push(`스킵 ${d.skipped}`);
+        if (d.failed)    parts.push(`실패 ${d.failed}`);
+        $transcodeText.textContent = parts.join(' / ') || '완료';
+      } else {
+        $transcodeText.textContent = '대기 중';
+      }
+      $transcodeBtn.disabled = false;
+      if (transcodePoller) { clearInterval(transcodePoller); transcodePoller = null; }
+      if (d.completed > 0) loadPortfolio();
+    }
+  }
+
+  function updateThumbUI(d) {
+    const done = (d.completed || 0) + (d.failed || 0) + (d.skipped || 0);
+    const pct  = d.total > 0 ? Math.round(done / d.total * 100) : 0;
+    $thumbProg.style.width = pct + '%';
+    $thumbProg.classList.toggle('error', d.failed > 0 && !d.running);
+
+    if (d.running) {
+      $thumbText.textContent = `생성 중… ${done}/${d.total}`;
+      $thumbBtn.disabled = true;
+    } else {
+      if (d.total > 0) {
+        const parts = [];
+        if (d.completed) parts.push(`완료 ${d.completed}`);
+        if (d.skipped)   parts.push(`스킵 ${d.skipped}`);
+        if (d.failed)    parts.push(`실패 ${d.failed}`);
+        $thumbText.textContent = parts.join(' / ') || '완료';
+      } else {
+        $thumbText.textContent = '대기 중';
+      }
+      $thumbBtn.disabled = false;
+      if (thumbPoller) { clearInterval(thumbPoller); thumbPoller = null; }
+      if (d.completed > 0) loadPortfolio();
+    }
+  }
+
+  $transcodeBtn.addEventListener('click', async () => {
+    $transcodeBtn.disabled = true;
+    $transcodeText.textContent = '요청 중…';
+    try {
+      const res = await fetch('/api/transcode', { method: 'POST' });
+      const d   = await res.json();
+      if (!res.ok) {
+        $transcodeText.textContent = d.error || '오류';
+        $transcodeBtn.disabled = false;
+        return;
+      }
+      if (d.queued === 0) {
+        $transcodeText.textContent = '변환할 영상 없음 (모두 완료)';
+        $transcodeBtn.disabled = false;
+        return;
+      }
+      $transcodeText.textContent = `${d.queued}개 변환 시작`;
+      transcodePoller = setInterval(async () => {
+        const s = await fetch('/api/transcode/status').then(r => r.json());
+        updateTranscodeUI(s);
+      }, 3000);
+    } catch {
+      $transcodeText.textContent = '연결 오류';
+      $transcodeBtn.disabled = false;
+    }
+  });
+
+  $thumbBtn.addEventListener('click', async () => {
+    $thumbBtn.disabled = true;
+    $thumbText.textContent = '요청 중…';
+    try {
+      const res = await fetch('/api/thumbnail', { method: 'POST' });
+      const d   = await res.json();
+      if (!res.ok) {
+        $thumbText.textContent = d.error || '오류';
+        $thumbBtn.disabled = false;
+        return;
+      }
+      $thumbText.textContent = `${d.total}개 생성 시작`;
+      thumbPoller = setInterval(async () => {
+        const s = await fetch('/api/thumbnail/status').then(r => r.json());
+        updateThumbUI(s);
+      }, 3000);
+    } catch {
+      $thumbText.textContent = '연결 오류';
+      $thumbBtn.disabled = false;
+    }
+  });
+
+  async function initAdminStatus() {
+    try {
+      const [ts, th] = await Promise.all([
+        fetch('/api/transcode/status').then(r => r.json()),
+        fetch('/api/thumbnail/status').then(r => r.json()),
+      ]);
+      updateTranscodeUI(ts);
+      if (ts.running) transcodePoller = setInterval(async () => {
+        updateTranscodeUI(await fetch('/api/transcode/status').then(r => r.json()));
+      }, 3000);
+      updateThumbUI(th);
+      if (th.running) thumbPoller = setInterval(async () => {
+        updateThumbUI(await fetch('/api/thumbnail/status').then(r => r.json()));
+      }, 3000);
+    } catch { /* 무시 */ }
+  }
+
   // --- Init ---
   loadPortfolio();
+  initAdminStatus();
 })();
 </script>
 </body>
