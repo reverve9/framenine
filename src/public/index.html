@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Frame NINE</title>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #111;
+  color: #eee;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Header --- */
+header {
+  padding: 20px 32px;
+  border-bottom: 1px solid #222;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #fff;
+}
+
+header .subtitle {
+  font-size: 12px;
+  color: #666;
+  letter-spacing: 1px;
+}
+
+/* --- Main Layout --- */
+.main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* --- Sidebar --- */
+.sidebar {
+  width: 360px;
+  min-width: 360px;
+  border-right: 1px solid #222;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #222;
+  overflow-x: auto;
+}
+
+.tab {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: #888;
+  cursor: pointer;
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab:hover { color: #ccc; }
+.tab.active { color: #fff; border-bottom-color: #fff; }
+
+.year-filter {
+  padding: 12px 16px;
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #222;
+}
+
+.year-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+  border-radius: 12px;
+  border: 1px solid #333;
+  background: transparent;
+  color: #888;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.year-btn:hover { border-color: #666; color: #ccc; }
+.year-btn.active { background: #fff; color: #111; border-color: #fff; }
+
+.video-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.video-card {
+  padding: 10px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  transition: background 0.15s;
+}
+
+.video-card:hover { background: #1a1a1a; }
+.video-card.active { background: #1e1e2e; }
+
+.video-card .thumb {
+  width: 120px;
+  height: 68px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: #222;
+  flex-shrink: 0;
+}
+
+.video-card .thumb-placeholder {
+  width: 120px;
+  height: 68px;
+  border-radius: 4px;
+  background: #222;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #444;
+  font-size: 20px;
+}
+
+.video-card .info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.video-card .name {
+  font-size: 14px;
+  color: #ddd;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.video-card .meta-line {
+  font-size: 11px;
+  color: #666;
+  display: flex;
+  gap: 8px;
+}
+
+.video-card .badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.badge.ready { background: #1a3a1a; color: #4ade80; }
+.badge.pending { background: #3a2a1a; color: #fbbf24; }
+
+/* --- Player Area --- */
+.player-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: #0a0a0a;
+}
+
+.player-container {
+  width: 100%;
+  max-width: 960px;
+}
+
+video {
+  width: 100%;
+  background: #000;
+  border-radius: 8px;
+}
+
+.player-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.now-playing {
+  font-size: 14px;
+  color: #888;
+}
+
+.quality-select {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: #222;
+  color: #ccc;
+  border: 1px solid #333;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.quality-select option { background: #222; }
+
+.placeholder {
+  text-align: center;
+  color: #444;
+}
+
+.placeholder .icon { font-size: 48px; margin-bottom: 16px; }
+.placeholder .text { font-size: 14px; }
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+  .main { flex-direction: column; }
+  .sidebar {
+    width: 100%;
+    min-width: unset;
+    max-height: 40vh;
+    border-right: none;
+    border-bottom: 1px solid #222;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FRAME NINE</h1>
+  <span class="subtitle">PORTFOLIO STREAMING</span>
+</header>
+
+<div class="main">
+  <aside class="sidebar">
+    <div class="tabs" id="tabs"></div>
+    <div class="year-filter" id="yearFilter"></div>
+    <div class="video-list" id="videoList"></div>
+  </aside>
+
+  <section class="player-area">
+    <div class="player-container">
+      <div id="placeholder" class="placeholder">
+        <div class="icon">&#9654;</div>
+        <div class="text">영상을 선택하세요</div>
+      </div>
+      <div id="playerWrap" style="display:none;">
+        <video id="video" controls></video>
+        <div class="player-controls">
+          <span class="now-playing" id="nowPlaying"></span>
+          <select class="quality-select" id="qualitySelect">
+            <option value="-1">AUTO</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  let portfolio = [];
+  let activeCategory = null;
+  let activeYear = 'all';
+  let activeVideoUrl = null;
+  let hls = null;
+
+  const $tabs = document.getElementById('tabs');
+  const $yearFilter = document.getElementById('yearFilter');
+  const $videoList = document.getElementById('videoList');
+  const $video = document.getElementById('video');
+  const $placeholder = document.getElementById('placeholder');
+  const $playerWrap = document.getElementById('playerWrap');
+  const $nowPlaying = document.getElementById('nowPlaying');
+  const $qualitySelect = document.getElementById('qualitySelect');
+
+  // --- Fetch Portfolio ---
+  async function loadPortfolio() {
+    const res = await fetch('/api/portfolio');
+    const data = await res.json();
+    portfolio = data.categories || [];
+    if (portfolio.length > 0) {
+      activeCategory = portfolio[0].name;
+    }
+    renderTabs();
+    renderYears();
+    renderVideos();
+  }
+
+  // --- Tabs ---
+  function renderTabs() {
+    $tabs.innerHTML = '';
+    portfolio.forEach(cat => {
+      const tab = document.createElement('div');
+      tab.className = 'tab' + (cat.name === activeCategory ? ' active' : '');
+      tab.textContent = cat.name;
+      tab.addEventListener('click', () => {
+        activeCategory = cat.name;
+        activeYear = 'all';
+        renderTabs();
+        renderYears();
+        renderVideos();
+      });
+      $tabs.appendChild(tab);
+    });
+  }
+
+  // --- Year Filter ---
+  function renderYears() {
+    $yearFilter.innerHTML = '';
+    const cat = portfolio.find(c => c.name === activeCategory);
+    if (!cat) return;
+
+    const years = cat.years.map(y => y.year).sort().reverse();
+
+    const allBtn = document.createElement('button');
+    allBtn.className = 'year-btn' + (activeYear === 'all' ? ' active' : '');
+    allBtn.textContent = 'ALL';
+    allBtn.addEventListener('click', () => {
+      activeYear = 'all';
+      renderYears();
+      renderVideos();
+    });
+    $yearFilter.appendChild(allBtn);
+
+    years.forEach(yr => {
+      const btn = document.createElement('button');
+      btn.className = 'year-btn' + (activeYear === yr ? ' active' : '');
+      btn.textContent = yr;
+      btn.addEventListener('click', () => {
+        activeYear = yr;
+        renderYears();
+        renderVideos();
+      });
+      $yearFilter.appendChild(btn);
+    });
+  }
+
+  // --- Helpers ---
+  function formatDuration(seconds) {
+    if (!seconds) return '';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return m + ':' + String(s).padStart(2, '0');
+  }
+
+  function formatRes(meta) {
+    if (!meta || !meta.height) return '';
+    return meta.height + 'p';
+  }
+
+  // --- Video List ---
+  function renderVideos() {
+    $videoList.innerHTML = '';
+    const cat = portfolio.find(c => c.name === activeCategory);
+    if (!cat) return;
+
+    const years = activeYear === 'all' ? cat.years : cat.years.filter(y => y.year === activeYear);
+
+    years.forEach(yr => {
+      yr.files.forEach(file => {
+        const card = document.createElement('div');
+        card.className = 'video-card' + (file.streamUrl === activeVideoUrl ? ' active' : '');
+
+        // 썸네일
+        if (file.thumbnailUrl) {
+          const img = document.createElement('img');
+          img.className = 'thumb';
+          img.src = file.thumbnailUrl;
+          img.alt = '';
+          img.loading = 'lazy';
+          card.appendChild(img);
+        } else {
+          const ph = document.createElement('div');
+          ph.className = 'thumb-placeholder';
+          ph.innerHTML = '&#9654;';
+          card.appendChild(ph);
+        }
+
+        // 정보 영역
+        const info = document.createElement('div');
+        info.className = 'info';
+
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = file.filename.replace('.mp4', '') + ' (' + yr.year + ')';
+        info.appendChild(name);
+
+        // 메타 라인
+        const metaParts = [];
+        if (file.meta) {
+          const dur = formatDuration(file.meta.duration);
+          if (dur) metaParts.push(dur);
+          const res = formatRes(file.meta);
+          if (res) metaParts.push(res);
+        }
+        if (metaParts.length > 0) {
+          const metaLine = document.createElement('span');
+          metaLine.className = 'meta-line';
+          metaLine.textContent = metaParts.join(' / ');
+          info.appendChild(metaLine);
+        }
+
+        card.appendChild(info);
+
+        // 뱃지
+        const badge = document.createElement('span');
+        badge.className = 'badge ' + (file.hlsReady ? 'ready' : 'pending');
+        badge.textContent = file.hlsReady ? 'READY' : '변환 필요';
+        card.appendChild(badge);
+
+        if (file.hlsReady && file.streamUrl) {
+          card.addEventListener('click', () => {
+            playVideo(file.streamUrl, file.filename);
+            activeVideoUrl = file.streamUrl;
+            renderVideos();
+          });
+        }
+
+        $videoList.appendChild(card);
+      });
+    });
+  }
+
+  // --- HLS Player ---
+  function playVideo(url, filename) {
+    $placeholder.style.display = 'none';
+    $playerWrap.style.display = 'block';
+    $nowPlaying.textContent = filename.replace('.mp4', '');
+
+    if (hls) {
+      hls.destroy();
+    }
+
+    if (Hls.isSupported()) {
+      hls = new Hls();
+      hls.loadSource(url);
+      hls.attachMedia($video);
+
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        $video.play();
+        updateQualityOptions();
+      });
+
+      hls.on(Hls.Events.LEVEL_SWITCHED, () => {
+        updateQualitySelect();
+      });
+    } else if ($video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari native HLS
+      $video.src = url;
+      $video.addEventListener('loadedmetadata', () => $video.play(), { once: true });
+      $qualitySelect.innerHTML = '<option value="-1">AUTO</option>';
+    }
+  }
+
+  // --- Quality ---
+  function updateQualityOptions() {
+    $qualitySelect.innerHTML = '<option value="-1">AUTO</option>';
+    if (!hls) return;
+
+    hls.levels.forEach((level, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = level.height + 'p';
+      $qualitySelect.appendChild(opt);
+    });
+
+    updateQualitySelect();
+  }
+
+  function updateQualitySelect() {
+    if (!hls) return;
+    if (hls.autoLevelEnabled) {
+      $qualitySelect.value = '-1';
+    } else {
+      $qualitySelect.value = hls.currentLevel;
+    }
+  }
+
+  $qualitySelect.addEventListener('change', () => {
+    if (!hls) return;
+    const val = parseInt($qualitySelect.value);
+    if (val === -1) {
+      hls.currentLevel = -1;
+    } else {
+      hls.currentLevel = val;
+    }
+  });
+
+  // --- Init ---
+  loadPortfolio();
+})();
+</script>
+</body>
+</html>
