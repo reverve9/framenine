@@ -171,6 +171,22 @@ header .subtitle {
 .badge.ready { background: #1a3a1a; color: #4ade80; }
 .badge.pending { background: #3a2a1a; color: #fbbf24; }
 
+.copy-btn {
+  font-size: 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #444;
+  padding: 2px 4px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  transition: color 0.15s;
+  line-height: 1;
+}
+.copy-btn:hover { color: #aaa; }
+.copy-btn.copied { color: #4ade80; }
+
 /* --- Player Area --- */
 .player-area {
   flex: 1;
@@ -607,6 +623,25 @@ video {
         card.appendChild(badge);
 
         if (file.hlsReady && file.streamUrl) {
+          // 공개 링크 복사 버튼
+          const copyBtn = document.createElement('button');
+          copyBtn.className = 'copy-btn';
+          copyBtn.title = '링크 복사';
+          copyBtn.innerHTML = '&#128279;';
+          copyBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const url = window.location.origin + file.streamUrl;
+            navigator.clipboard.writeText(url).then(() => {
+              copyBtn.innerHTML = '&#10003;';
+              copyBtn.classList.add('copied');
+              setTimeout(() => {
+                copyBtn.innerHTML = '&#128279;';
+                copyBtn.classList.remove('copied');
+              }, 1500);
+            });
+          });
+          card.appendChild(copyBtn);
+
           card.addEventListener('click', () => {
             playVideo(file.streamUrl, file.filename);
             activeVideoUrl = file.streamUrl;
