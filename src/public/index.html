@@ -309,6 +309,13 @@ video {
   <aside class="sidebar">
     <div class="admin-panel">
       <div class="admin-row">
+        <button class="admin-btn" id="scanBtn">스캔</button>
+        <div class="admin-info">
+          <div class="admin-text" id="scanText">파일 추가 시 자동 감지 중</div>
+          <div class="progress-bar"><div class="progress-fill" id="scanProg"></div></div>
+        </div>
+      </div>
+      <div class="admin-row">
         <button class="admin-btn" id="transcodeBtn">HLS 변환</button>
         <div class="admin-info">
           <div class="admin-text" id="transcodeText">대기 중</div>
@@ -578,6 +585,9 @@ video {
   });
 
   // --- Admin Panel ---
+  const $scanBtn      = document.getElementById('scanBtn');
+  const $scanText     = document.getElementById('scanText');
+  const $scanProg     = document.getElementById('scanProg');
   const $transcodeBtn = document.getElementById('transcodeBtn');
   const $thumbBtn     = document.getElementById('thumbBtn');
   const $transcodeText = document.getElementById('transcodeText');
@@ -642,6 +652,32 @@ video {
       if (d.completed > 0) loadPortfolio();
     }
   }
+
+  $scanBtn.addEventListener('click', async () => {
+    $scanBtn.disabled = true;
+    $scanText.textContent = '스캔 중…';
+    $scanProg.style.width = '0%';
+    try {
+      const res = await fetch('/api/scan', { method: 'POST' });
+      const d   = await res.json();
+      if (!res.ok) { $scanText.textContent = d.error || '오류'; $scanBtn.disabled = false; return; }
+      await loadPortfolio();
+      if (d.queued > 0) {
+        $scanText.textContent = `${d.queued}개 변환 예약됨`;
+        $scanProg.style.width = '100%';
+        // 변환 상태도 폴링 시작
+        if (!transcodePoller) {
+          transcodePoller = setInterval(async () => {
+            updateTranscodeUI(await fetch('/api/transcode/status').then(r => r.json()));
+          }, 3000);
+        }
+      } else {
+        $scanText.textContent = `${d.total}개 파일 확인 — 신규 없음`;
+        $scanProg.style.width = '100%';
+      }
+    } catch { $scanText.textContent = '연결 오류'; }
+    finally { $scanBtn.disabled = false; }
+  });
 
   $transcodeBtn.addEventListener('click', async () => {
     $transcodeBtn.disabled = true;

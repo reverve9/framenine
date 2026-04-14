@@ -15,6 +15,7 @@
     "@fastify/cors": "^11.2.0",
     "@fastify/helmet": "^13.0.2",
     "@fastify/static": "^9.1.0",
+    "chokidar": "^5.0.0",
     "dotenv": "^17.4.2",
     "fastify": "^5.8.4",
     "fluent-ffmpeg": "^2.1.3",

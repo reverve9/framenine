@@ -11,6 +11,7 @@ import { scanPortfolio } from './scanner.js';
 import transcodeRoutes from './routes/transcode.js';
 import streamRoutes from './routes/stream.js';
 import thumbnailRoutes from './routes/thumbnail.js';
+import { startWatcher } from './watcher.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -78,6 +79,44 @@ app.get('/api/portfolio', async (request, reply) => {
   return { categories: portfolioCache ?? [] };
 });
 
+// 수동 스캔: 포트폴리오 갱신 + 변환/썸네일 자동 실행
+app.post('/api/scan', async (request, reply) => {
+  await refreshPortfolio();
+  const { flattenPortfolio } = await import('./scanner.js');
+  const { enqueueAll, runBatch, isBatchRunning } = await import('./job-manager.js');
+  const { generateThumbnail } = await import('./thumbnail.js');
+  const { saveMetadata } = await import('./metadata.js');
+
+  const videos = await flattenPortfolio(MEDIA_ROOT);
+  const result = await enqueueAll(videos, MEDIA_ROOT);
+
+  if (result.queued > 0 && !isBatchRunning()) {
+    runBatch(MEDIA_ROOT)
+      .then(async () => {
+        const all = await flattenPortfolio(MEDIA_ROOT);
+        for (const v of all) {
+          try {
+            await generateThumbnail(v.inputPath, MEDIA_ROOT, v.category, v.year, v.filename);
+            await saveMetadata(v.inputPath, MEDIA_ROOT, v.category, v.year, v.filename);
+          } catch {}
+        }
+      })
+      .catch((err) => app.log.error(err, '[scan] 변환 오류'));
+  } else if (result.queued === 0) {
+    // 변환 불필요 — 썸네일/메타만 갱신
+    (async () => {
+      for (const v of videos) {
+        try {
+          await generateThumbnail(v.inputPath, MEDIA_ROOT, v.category, v.year, v.filename);
+          await saveMetadata(v.inputPath, MEDIA_ROOT, v.category, v.year, v.filename);
+        } catch {}
+      }
+    })().catch(() => {});
+  }
+
+  return { message: 'Scan started', total: videos.length, queued: result.queued, skipped: result.skipped };
+});
+
 await app.register(fastifyStatic, {
   root: join(__dirname, 'public'),
   prefix: '/',
@@ -94,6 +133,7 @@ async function start() {
   app.log.info(`[scanner] ${portfolioCache.length} categories found`);
 
   await app.listen({ port: PORT, host: '0.0.0.0' });
+  startWatcher(app.log);
 }
 
 start().catch((err) => {
