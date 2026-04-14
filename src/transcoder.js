@@ -48,18 +48,18 @@ export function transcodeVariant(inputPath, outputDir, variant, onProgress) {
       .videoBitrate(variant.videoBitrate)
       .audioBitrate(variant.audioBitrate)
       .outputOptions([
-        `-pix_fmt yuv420p`,
-        `-preset slow`,
-        `-profile:v ${variant.profile}`,
-        `-level ${variant.level}`,
-        `-maxrate ${variant.maxrate}`,
-        `-bufsize ${variant.bufsize}`,
-        `-vf scale=${variant.width}:${variant.height}`,
-        `-force_key_frames expr:gte(t,n_forced*${SEGMENT_DURATION})`,
-        `-f hls`,
-        `-hls_time ${SEGMENT_DURATION}`,
-        `-hls_list_size 0`,
-        `-hls_segment_filename ${segmentPattern}`,
+        '-pix_fmt', 'yuv420p',
+        '-preset', 'slow',
+        '-profile:v', variant.profile,
+        '-level', variant.level,
+        '-maxrate', variant.maxrate,
+        '-bufsize', variant.bufsize,
+        '-vf', `scale=${variant.width}:${variant.height}`,
+        '-force_key_frames', `expr:gte(t,n_forced*${SEGMENT_DURATION})`,
+        '-f', 'hls',
+        '-hls_time', String(SEGMENT_DURATION),
+        '-hls_list_size', '0',
+        '-hls_segment_filename', segmentPattern,
       ])
       .output(playlistPath)
       .on('progress', (progress) => {
