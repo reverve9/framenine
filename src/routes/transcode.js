@@ -1,11 +1,12 @@
 import { flattenPortfolio } from '../scanner.js';
 import { enqueueAll, runBatch, isBatchRunning, getStatus } from '../job-manager.js';
+import { requireAuth } from '../auth.js';
 
 const MEDIA_ROOT = process.env.MEDIA_ROOT;
 
 export default async function transcodeRoutes(app) {
   // 일괄 변환 시작
-  app.post('/api/transcode', async (request, reply) => {
+  app.post('/api/transcode', { preHandler: requireAuth }, async (request, reply) => {
     if (isBatchRunning()) {
       return reply.code(409).send({
         error: 'Transcoding already in progress',

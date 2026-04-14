@@ -6,6 +6,8 @@ import { generateThumbnail } from '../thumbnail.js';
 import { saveMetadata } from '../metadata.js';
 import { hlsRoot } from '../config.js';
 
+import { requireAuth } from '../auth.js';
+
 const MEDIA_ROOT = process.env.MEDIA_ROOT;
 
 let thumbRunning = false;
@@ -13,7 +15,7 @@ let thumbStatus = { running: false, total: 0, completed: 0, failed: 0, skipped: 
 
 export default async function thumbnailRoutes(app) {
   // 일괄 썸네일 + 메타데이터 생성
-  app.post('/api/thumbnail', async (request, reply) => {
+  app.post('/api/thumbnail', { preHandler: requireAuth }, async (request, reply) => {
     if (thumbRunning) {
       return reply.code(409).send({ error: 'Thumbnail generation already in progress', ...thumbStatus });
     }

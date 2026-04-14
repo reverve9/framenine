@@ -16,6 +16,7 @@ module.exports = {
         PORT: '3000',
         MEDIA_ROOT: '/Volumes/NINE_MEDIA/WORX',
         ALLOWED_ORIGINS: '*',
+        ADMIN_PASSWORD: 'framenine',
 PATH: '/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin',
       },
     },

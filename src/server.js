@@ -12,6 +12,7 @@ import transcodeRoutes from './routes/transcode.js';
 import streamRoutes from './routes/stream.js';
 import thumbnailRoutes from './routes/thumbnail.js';
 import { startWatcher } from './watcher.js';
+import { login, requireAuth } from './auth.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -79,8 +80,16 @@ app.get('/api/portfolio', async (request, reply) => {
   return { categories: portfolioCache ?? [] };
 });
 
+// 어드민 로그인
+app.post('/api/admin/login', async (request, reply) => {
+  const { password } = request.body || {};
+  const token = login(password);
+  if (!token) return reply.code(401).send({ error: '비밀번호가 틀렸습니다' });
+  return { token };
+});
+
 // 수동 스캔: 포트폴리오 갱신 + 변환/썸네일 자동 실행
-app.post('/api/scan', async (request, reply) => {
+app.post('/api/scan', { preHandler: requireAuth }, async (request, reply) => {
   await refreshPortfolio();
   const { flattenPortfolio } = await import('./scanner.js');
   const { enqueueAll, runBatch, isBatchRunning } = await import('./job-manager.js');
