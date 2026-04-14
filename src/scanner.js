@@ -1,6 +1,6 @@
 import { access, readFile, readdir } from 'node:fs/promises';
 import { join, parse } from 'node:path';
-import { HLS_DIR } from './config.js';
+import { HLS_DIR, sanitizeName } from './config.js';
 
 /**
  * 외장하드 portfolio 폴더를 스캔하여
@@ -44,10 +44,10 @@ export async function scanPortfolio(mediaRoot) {
       const files = [];
 
       for (const f of mp4Files) {
-        const baseName = parse(f.name).name;
-        const hlsDir = join(mediaRoot, HLS_DIR, catEntry.name, yearEntry.name, baseName);
+        const safeName = sanitizeName(f.name);
+        const hlsDir = join(mediaRoot, HLS_DIR, catEntry.name, yearEntry.name, safeName);
         const encodedCat = encodeURIComponent(catEntry.name);
-        const encodedName = encodeURIComponent(baseName);
+        const encodedName = encodeURIComponent(safeName);
 
         let hlsReady = false;
         try {

@@ -50,7 +50,7 @@ export function transcodeVariant(inputPath, outputDir, variant, onProgress) {
       .audioBitrate(variant.audioBitrate)
       .outputOptions([
         '-pix_fmt', 'yuv420p',
-        '-preset', 'slow',
+        '-preset', variant.preset || 'medium',
         '-profile:v', variant.profile,
         '-level', variant.level,
         '-maxrate', variant.maxrate,
@@ -63,11 +63,17 @@ export function transcodeVariant(inputPath, outputDir, variant, onProgress) {
         '-hls_segment_filename', segmentPattern,
       ])
       .output(playlistPath)
+      .on('start', (cmd) => {
+        console.log('[ffmpeg cmd]', cmd);
+      })
       .on('progress', (progress) => {
         if (onProgress) onProgress(progress);
       })
       .on('end', () => resolve())
-      .on('error', (err) => reject(err))
+      .on('error', (err, stdout, stderr) => {
+        console.error('[ffmpeg stderr]', stderr);
+        reject(err);
+      })
       .run();
   });
 }
