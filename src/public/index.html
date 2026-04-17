@@ -261,10 +261,47 @@ video {
 .admin-panel {
   border-bottom: 1px solid #222;
   padding: 12px 16px;
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 10px;
 }
+
+body.authed .admin-panel { display: flex; }
+
+/* 로그인 전에는 "관리자 로그인" 안내만 */
+.admin-hint {
+  padding: 14px 16px;
+  font-size: 11px;
+  color: #444;
+  text-align: center;
+  border-bottom: 1px solid #222;
+  letter-spacing: 1px;
+}
+body.authed .admin-hint { display: none; }
+
+/* --- Upload (admin panel 내부) --- */
+.upload-zone {
+  padding: 18px 12px;
+  border: 2px dashed #333;
+  border-radius: 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.upload-zone:hover, .upload-zone.drag { border-color: #4ade80; background: #0f1a0f; }
+.upload-zone .up-main { font-size: 12px; color: #aaa; }
+.upload-zone .up-sub { font-size: 10px; color: #555; margin-top: 4px; letter-spacing: 0.5px; }
+
+.upload-list { display: flex; flex-direction: column; gap: 4px; }
+.upload-list:empty { display: none; }
+.upload-item { padding: 6px 10px; background: #1a1a1a; border-radius: 4px; font-size: 11px; }
+.upload-item .up-row { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+.upload-item .up-name { color: #ccc; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.upload-item .up-pct { color: #888; white-space: nowrap; font-family: monospace; }
+.upload-item .up-bar { height: 2px; background: #222; border-radius: 2px; overflow: hidden; }
+.upload-item .up-fill { height: 100%; background: #4ade80; width: 0%; transition: width 0.2s; }
+.upload-item.error .up-fill { background: #f87171; }
+.upload-item.error .up-pct { color: #f87171; }
 
 .admin-row {
   display: flex;
@@ -419,36 +456,40 @@ video {
   <h1>FRAME NINE</h1>
   <span class="subtitle">PORTFOLIO STREAMING</span>
   <a href="/files/" class="nav-link">파일 공유 →</a>
+  <div class="admin-lock" id="adminLock">🔒 로그인</div>
 </header>
 
 <div class="main">
   <aside class="sidebar">
+    <div class="admin-hint">관리자 로그인 시 관리 도구가 나타납니다</div>
     <div class="admin-panel">
-      <div class="admin-row" style="justify-content:space-between; padding-bottom:4px;">
-        <span style="font-size:11px; color:#444; letter-spacing:1px;">ADMIN</span>
-        <div class="admin-lock" id="adminLock">🔒 로그인</div>
-      </div>
       <div class="admin-row">
-        <button class="admin-btn" id="scanBtn" disabled>스캔</button>
+        <button class="admin-btn" id="scanBtn">스캔</button>
         <div class="admin-info">
           <div class="admin-text" id="scanText">파일 추가 시 자동 감지 중</div>
           <div class="progress-bar"><div class="progress-fill" id="scanProg"></div></div>
         </div>
       </div>
       <div class="admin-row">
-        <button class="admin-btn" id="transcodeBtn" disabled>HLS 변환</button>
+        <button class="admin-btn" id="transcodeBtn">HLS 변환</button>
         <div class="admin-info">
           <div class="admin-text" id="transcodeText">대기 중</div>
           <div class="progress-bar"><div class="progress-fill" id="transcodeProg"></div></div>
         </div>
       </div>
       <div class="admin-row">
-        <button class="admin-btn" id="thumbBtn" disabled>썸네일 생성</button>
+        <button class="admin-btn" id="thumbBtn">썸네일 생성</button>
         <div class="admin-info">
           <div class="admin-text" id="thumbText">대기 중</div>
           <div class="progress-bar"><div class="progress-fill" id="thumbProg"></div></div>
         </div>
       </div>
+      <div class="upload-zone" id="uploadZone">
+        <div class="up-main">📤 파일 업로드</div>
+        <div class="up-sub">클릭 또는 드래그 · 최대 5GB · _shared/ 에 저장</div>
+        <input type="file" id="uploadInput" multiple style="display:none;" />
+      </div>
+      <div class="upload-list" id="uploadList"></div>
     </div>
     <div class="tabs" id="tabs"></div>
     <div class="year-filter" id="yearFilter"></div>
@@ -747,8 +788,7 @@ video {
   let adminToken = localStorage.getItem('adminToken') || null;
 
   function setAdminUnlocked(unlocked) {
-    const btns = [$scanBtn, $transcodeBtn, $thumbBtn];
-    btns.forEach(b => b.disabled = !unlocked);
+    document.body.classList.toggle('authed', unlocked);
     $adminLock.textContent = unlocked ? '🔓 로그아웃' : '🔒 로그인';
     $adminLock.classList.toggle('unlocked', unlocked);
   }
@@ -945,6 +985,76 @@ video {
       $thumbText.textContent = '연결 오류';
       $thumbBtn.disabled = false;
     }
+  });
+
+  // --- Upload (admin panel) ---
+  const $uploadZone  = document.getElementById('uploadZone');
+  const $uploadInput = document.getElementById('uploadInput');
+  const $uploadList  = document.getElementById('uploadList');
+
+  function addUploadItem(name) {
+    const el = document.createElement('div');
+    el.className = 'upload-item';
+    el.innerHTML = '<div class="up-row"><span class="up-name"></span><span class="up-pct">0%</span></div><div class="up-bar"><div class="up-fill"></div></div>';
+    el.querySelector('.up-name').textContent = name;
+    $uploadList.appendChild(el);
+    return {
+      setPct(p) { el.querySelector('.up-pct').textContent = p + '%'; el.querySelector('.up-fill').style.width = p + '%'; },
+      done(msg) { el.querySelector('.up-pct').textContent = msg || '완료'; el.querySelector('.up-fill').style.width = '100%'; setTimeout(() => el.remove(), 3000); },
+      fail(msg) { el.classList.add('error'); el.querySelector('.up-pct').textContent = msg || '실패'; },
+    };
+  }
+
+  function uploadOne(file) {
+    return new Promise((resolve) => {
+      const ui = addUploadItem(file.name);
+      const form = new FormData();
+      form.append('file', file);
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/files/upload/');
+      xhr.setRequestHeader('Authorization', 'Bearer ' + adminToken);
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) ui.setPct(Math.round(e.loaded / e.total * 100));
+      });
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const d = JSON.parse(xhr.responseText);
+            ui.done(d.savedAs && d.savedAs !== file.name ? '완료 (' + d.savedAs + ')' : '완료');
+          } catch { ui.done(); }
+          resolve(true);
+        } else {
+          let msg = '실패';
+          if (xhr.status === 413) msg = '용량 초과';
+          else if (xhr.status === 401) msg = '인증 필요';
+          else { try { msg = JSON.parse(xhr.responseText).error || msg; } catch {} }
+          ui.fail(msg);
+          resolve(false);
+        }
+      };
+      xhr.onerror = () => { ui.fail('연결 오류'); resolve(false); };
+      xhr.send(form);
+    });
+  }
+
+  async function uploadFiles(files) {
+    if (!adminToken) return;
+    for (const f of Array.from(files)) await uploadOne(f);
+  }
+
+  $uploadZone.addEventListener('click', () => $uploadInput.click());
+  $uploadInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length) uploadFiles(e.target.files);
+    e.target.value = '';
+  });
+  ['dragenter','dragover'].forEach(ev => $uploadZone.addEventListener(ev, (e) => {
+    e.preventDefault(); e.stopPropagation(); $uploadZone.classList.add('drag');
+  }));
+  ['dragleave','drop'].forEach(ev => $uploadZone.addEventListener(ev, (e) => {
+    e.preventDefault(); e.stopPropagation(); $uploadZone.classList.remove('drag');
+  }));
+  $uploadZone.addEventListener('drop', (e) => {
+    if (e.dataTransfer && e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
   });
 
   async function initAdminStatus() {

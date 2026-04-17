@@ -29,7 +29,10 @@ const loggerConfig = NODE_ENV === 'production'
   ? { level: 'info' }
   : { level: 'info', transport: { target: 'pino-pretty', options: { colorize: true } } };
 
-const app = Fastify({ logger: loggerConfig });
+const app = Fastify({
+  logger: loggerConfig,
+  bodyLimit: 5 * 1024 * 1024 * 1024, // 5GB (업로드 허용 상한)
+});
 
 // --- CORS ---
 const corsOrigin = ALLOWED_ORIGINS
