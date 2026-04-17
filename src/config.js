@@ -1,6 +1,7 @@
 import { join, parse } from 'node:path';
 
 export const HLS_DIR = '_hls';
+export const SHARE_DIR = '_shared';
 export const SEGMENT_DURATION = 6;
 
 export const VARIANTS = [

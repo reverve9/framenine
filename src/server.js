@@ -11,6 +11,7 @@ import { scanPortfolio } from './scanner.js';
 import transcodeRoutes from './routes/transcode.js';
 import streamRoutes from './routes/stream.js';
 import thumbnailRoutes from './routes/thumbnail.js';
+import filesRoutes from './routes/files.js';
 import { startWatcher } from './watcher.js';
 import { login, requireAuth } from './auth.js';
 
@@ -134,6 +135,7 @@ await app.register(fastifyStatic, {
 await app.register(transcodeRoutes);
 await app.register(streamRoutes);
 await app.register(thumbnailRoutes);
+await app.register(filesRoutes);
 
 // --- Start ---
 

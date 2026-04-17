@@ -1,6 +1,6 @@
 import { access, readFile, readdir } from 'node:fs/promises';
 import { join, parse } from 'node:path';
-import { HLS_DIR, sanitizeName } from './config.js';
+import { HLS_DIR, SHARE_DIR, sanitizeName } from './config.js';
 
 /**
  * 외장하드 portfolio 폴더를 스캔하여
@@ -17,7 +17,7 @@ export async function scanPortfolio(mediaRoot) {
   }
 
   for (const catEntry of categoryDirs) {
-    if (!catEntry.isDirectory() || catEntry.name.startsWith('.') || catEntry.name === HLS_DIR) continue;
+    if (!catEntry.isDirectory() || catEntry.name.startsWith('.') || catEntry.name === HLS_DIR || catEntry.name === SHARE_DIR) continue;
 
     const catPath = join(mediaRoot, catEntry.name);
     const years = [];

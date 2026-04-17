@@ -60,6 +60,7 @@ export function startWatcher(log) {
     ignored: [
       /(^|[/\\])\../,   // dot 파일
       /_hls/,           // 변환 출력 디렉토리
+      /_shared/,        // 파일 공유 디렉토리
       /\.tmp$/,
       /\.part$/,
     ],
