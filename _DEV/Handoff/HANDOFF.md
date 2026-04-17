@@ -10,6 +10,7 @@
 | 4     | 완료 | 썸네일 + 메타데이터 | [HANDOFF-phase4.md](HANDOFF-phase4.md) |
 | 5     | 완료 | 운영 안정화 | [HANDOFF-phase5.md](HANDOFF-phase5.md) |
 | 6     | 완료 | 배포 (맥미니 + VPS + Tailscale) | [HANDOFF-phase6.md](HANDOFF-phase6.md) |
+| 7     | 완료 | 파일 공유 + 관리자 UI 게이트 | [HANDOFF-phase7.md](HANDOFF-phase7.md) |
 
 ## 프로젝트 구조 (최종)
 
@@ -30,10 +31,12 @@ Frame NINE/
 │   ├── metadata.js            # ffprobe 메타데이터 추출/캐시
 │   ├── public/
 │   │   └── index.html         # 프론트엔드 (Vanilla JS 단일 파일)
+│   ├── auth.js               # 관리자 토큰 (메모리, Bearer, TTL 24h)
 │   └── routes/
 │       ├── transcode.js       # POST /api/transcode, GET /api/transcode/status
 │       ├── stream.js          # HLS 파일 서빙 (/stream/...)
-│       └── thumbnail.js       # POST /api/thumbnail, GET /thumb/...
+│       ├── thumbnail.js       # POST /api/thumbnail, GET /thumb/...
+│       └── files.js           # /files/ 브라우저·다운로드·인증 업로드
 └── _dev/
     ├── Handoff/               # Phase별 핸드오프 문서
     └── Prompt/                # Phase별 프롬프트
@@ -54,6 +57,11 @@ Frame NINE/
 | GET    | `/stream/:category/:year/:name/:variant/stream.m3u8` | variant 플레이리스트 |
 | GET    | `/stream/:category/:year/:name/:variant/:segment` | .ts 세그먼트 |
 | GET    | `/thumb/:category/:year/:name/thumbnail.jpg` | 썸네일 이미지 |
+| POST   | `/api/admin/login` | 관리자 비밀번호 → Bearer 토큰 |
+| GET    | `/files/` | 공유 폴더 브라우저 (HTML) |
+| GET    | `/files/*` | 하위 디렉토리 / 파일 다운로드 |
+| GET    | `/files/download/*` | 강제 attachment 다운로드 |
+| POST   | `/files/upload/*` | 인증 필수 멀티파트 업로드 |
 
 ## 실행 방법
 
