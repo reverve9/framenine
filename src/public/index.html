@@ -62,6 +62,16 @@ header .nav-link:hover {
   overflow: hidden;
 }
 
+/* --- Sidebar (로그인 전 전체 숨김) --- */
+.sidebar { display: none !important; }
+body.authed .sidebar { display: flex !important; }
+
+/* 로그아웃 상태 플레이어 영역 안내 */
+.guest-msg { display: block; }
+.auth-msg  { display: none; }
+body.authed .guest-msg { display: none; }
+body.authed .auth-msg  { display: block; }
+
 /* --- Sidebar --- */
 .sidebar {
   width: 360px;
@@ -499,8 +509,14 @@ body.authed .admin-hint { display: none; }
   <section class="player-area">
     <div class="player-container">
       <div id="placeholder" class="placeholder">
-        <div class="icon">&#9654;</div>
-        <div class="text">영상을 선택하세요</div>
+        <div class="guest-msg">
+          <div class="icon">&#128274;</div>
+          <div class="text">관리자 로그인이 필요합니다</div>
+        </div>
+        <div class="auth-msg">
+          <div class="icon">&#9654;</div>
+          <div class="text">영상을 선택하세요</div>
+        </div>
       </div>
       <div id="playerWrap" style="display:none;">
         <video id="video" controls></video>
